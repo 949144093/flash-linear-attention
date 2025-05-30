@@ -242,16 +242,47 @@ use_cuda_graph = (is_nvidia and os.environ.get('FLA_USE_CUDA_GRAPH', '0') == '1'
 is_tf32_supported = (is_nvidia and torch.cuda.get_device_capability(0)[0] >= 8)
 is_gather_supported = hasattr(triton.language, 'gather')
 
+# 全局缓存变量
+_device_shared_mem_cache = None
+
 
 def get_all_max_shared_mem():
+    global _device_shared_mem_cache
+
+    # 如果缓存已存在，直接返回
+    if _device_shared_mem_cache is not None:
+        return _device_shared_mem_cache
+
     try:
-        return [
-            triton.runtime.driver.active.utils.get_device_properties(i)['max_shared_mem']
-            for i in range(device_torch_lib.device_count())
-        ]
+        # 使用 Triton API 获取设备属性
+        device_count = torch.cuda.device_count()
+        result = []
+
+        for i in range(device_count):
+            # 获取 Triton 设备属性
+            props = triton.runtime.driver.active.utils.get_device_properties(i)
+            # 提取 max_shared_mem 属性
+            result.append(props['max_shared_mem'])
+
+        # 缓存结果
+        _device_shared_mem_cache = result
+        return result
+
     except BaseException:
+        # 异常处理 - 发出警告并返回默认值
         _cpu_device_warning()
+        # 缓存默认值避免重复警告
+        _device_shared_mem_cache = [-1]
         return [-1]
+# def get_all_max_shared_mem():
+#     try:
+#         return [
+#             triton.runtime.driver.active.utils.get_device_properties(i)['max_shared_mem']
+#             for i in range(device_torch_lib.device_count())
+#         ]
+#     except BaseException:
+#         _cpu_device_warning()
+#         return [-1]
 
 
 class Backend(Enum):
