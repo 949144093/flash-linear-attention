@@ -622,8 +622,11 @@ def parallel_attn_bwd(
         BK=BK,
         BV=BV
     )
-    dk = reduce(dk, 'b t (h g) k -> b t h k', g=G, reduction='sum')
-    dv = reduce(dv, 'b t (h g) v -> b t h v', g=G, reduction='sum')
+    # dk = reduce(dk, 'b t (h g) k -> b t h k', g=G, reduction='sum')
+    # dv = reduce(dv, 'b t (h g) v -> b t h v', g=G, reduction='sum')
+    # 推荐最终方案
+    dk = torch.einsum('b t (g h) k -> b t h k', dk, g=G)
+    dv = torch.einsum('b t (g h) v -> b t h v', dv, g=G)
     # 使用 torch.einsum 替代 reduce
     # 修改 dk 的 reduce 操作
     # b, t, _, k = dk.shape
