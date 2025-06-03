@@ -625,8 +625,17 @@ def parallel_attn_bwd(
     # dk = reduce(dk, 'b t (h g) k -> b t h k', g=G, reduction='sum')
     # dv = reduce(dv, 'b t (h g) v -> b t h v', g=G, reduction='sum')
     # 推荐最终方案
-    dk = torch.einsum('b t (g h) k -> b t h k', dk, g=G)
-    dv = torch.einsum('b t (g h) v -> b t h v', dv, g=G)
+    # 使用 reshape + sum 替代 view + sum
+    b, t, g_h, k_dim = dk.shape
+    h = g_h // G  # 计算每个组对应的头数
+
+    # 确保张量内存连续
+    dk = dk.contiguous()
+    dv = dv.contiguous()
+
+    # 执行分组求和
+    dk = dk.reshape(b, t, G, h, k_dim).sum(dim=2)
+    dv = dv.reshape(b, t, G, h, V).sum(dim=2)
     # 使用 torch.einsum 替代 reduce
     # 修改 dk 的 reduce 操作
     # b, t, _, k = dk.shape
