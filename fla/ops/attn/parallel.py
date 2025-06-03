@@ -622,18 +622,18 @@ def parallel_attn_bwd(
         BK=BK,
         BV=BV
     )
-    # dk = reduce(dk, 'b t (h g) k -> b t h k', g=G, reduction='sum')
-    # dv = reduce(dv, 'b t (h g) v -> b t h v', g=G, reduction='sum')
+    dk = reduce(dk, 'b t (h g) k -> b t h k', g=G, reduction='sum')
+    dv = reduce(dv, 'b t (h g) v -> b t h v', g=G, reduction='sum')
     # 使用 torch.einsum 替代 reduce
     # 修改 dk 的 reduce 操作
-    b, t, _, k = dk.shape
-    h = dk.size(2) // G  # 计算每个组的头数
-    dk = dk.view(b, t, G, h, k).sum(dim=2)  # 对组维度求和
-
-    # 修改 dv 的 reduce 操作
-    b, t, _, v = dv.shape
-    h = dv.size(2) // G  # 计算每个组的头数
-    dv = dv.view(b, t, G, h, v).sum(dim=2)  # 对组维度求和
+    # b, t, _, k = dk.shape
+    # h = dk.size(2) // G  # 计算每个组的头数
+    # dk = dk.view(b, t, G, h, k).sum(dim=2)  # 对组维度求和
+    #
+    # # 修改 dv 的 reduce 操作
+    # b, t, _, v = dv.shape
+    # h = dv.size(2) // G  # 计算每个组的头数
+    # dv = dv.view(b, t, G, h, v).sum(dim=2)  # 对组维度求和
     if g_cumsum is not None:
         dg_cumsum.add_(dg_cumsum_k)
     return dq, dk, dv, dg_cumsum
